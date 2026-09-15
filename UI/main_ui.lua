@@ -1,5 +1,8 @@
 -- UI/main_ui.lua
 -- Quản lý trạng thái UI (bật/tắt Auto Farm, v.v.)
+
+local BASE_URL = "https://raw.githubusercontent.com/dubaonhan-droid/blox-fruits/main/"
+
 local UI = {}
 
 -- Lưu trữ trạng thái các tùy chọn của người chơi
@@ -11,7 +14,7 @@ function UI.Load()
     print("[UI] Đang tải giao diện...")
 
     -- Gọi module menu để vẽ giao diện, truyền UI qua tham số (tránh circular require)
-    local Menu = require("UI.menu")
+    local Menu = loadstring(game:HttpGet(BASE_URL .. "UI/menu.lua"))()
     Menu.Build(UI)
 end
 

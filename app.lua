@@ -1,6 +1,10 @@
 -- app.lua: Điểm khởi chạy chính — kết nối UI và AutoFarm
-local UI = require("UI.main_ui")
-local AutoFarm = require("core.auto_farm")
+-- Dùng loadstring + HttpGet thay cho require (chạy từ GitHub raw)
+
+local BASE_URL = "https://raw.githubusercontent.com/dubaonhan-droid/blox-fruits/main/"
+
+local UI = loadstring(game:HttpGet(BASE_URL .. "UI/main_ui.lua"))()
+local AutoFarm = loadstring(game:HttpGet(BASE_URL .. "core/auto_farm.lua"))()
 
 local BotApp = {}
 

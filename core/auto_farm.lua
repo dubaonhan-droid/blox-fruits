@@ -2,11 +2,13 @@
 -- Module farm tuần tự: Nhận Quest → Bay đến bãi → Farm → Quest xong → Kiểm tra level → Lặp lại
 -- KHÔNG dùng task.spawn chồng chéo, chỉ có 1 vòng lặp duy nhất.
 
+local BASE_URL = "https://raw.githubusercontent.com/dubaonhan-droid/blox-fruits/main/"
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local MobData = require("config.mob_data")
+local MobData = loadstring(game:HttpGet(BASE_URL .. "config/mob_data.lua"))()
 local LocalPlayer = Players.LocalPlayer
 
 local AutoFarm = {}
