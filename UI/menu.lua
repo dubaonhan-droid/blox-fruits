@@ -26,20 +26,46 @@ function Menu.Build(UI_State)
     -- ═══════════════════════════════════════
     -- TAB 1: Farm chính
     -- ═══════════════════════════════════════
-    local FarmTab = Window:CreateTab("⚔️ Main Farm", "swords")
+    local MainTab = Window:CreateTab("Main Farm", 4483362458)
 
-    FarmTab:CreateToggle({
+    local FarmSection = MainTab:CreateSection("Cài đặt chung")
+
+    MainTab:CreateToggle({
         Name = "Bật Auto Farm Level",
         CurrentValue = false,
         Flag = "AutoFarmToggle",
         Callback = function(Value)
             UI_State.ToggleAutoFarm(Value)
-        end
+        end,
     })
 
-    FarmTab:CreateLabel("Bật toggle → Bot tự farm theo level")
+    local WeaponSection = MainTab:CreateSection("Vũ Khí & Combat")
 
-    FarmTab:CreateParagraph({
+    MainTab:CreateDropdown({
+        Name = "Chọn Vũ Khí Farm",
+        Options = {"Melee", "Sword", "Blox Fruit"},
+        CurrentOption = {"Melee"},
+        MultipleOptions = false,
+        Flag = "WeaponDropdown",
+        Callback = function(Option)
+            UI_State.SetWeaponType(Option[1])
+        end,
+    })
+
+    MainTab:CreateToggle({
+        Name = "Fast Attack (Đánh Nhanh)",
+        CurrentValue = false,
+        Flag = "FastAttackToggle",
+        Callback = function(Value)
+            UI_State.ToggleFastAttack(Value)
+        end,
+    })
+
+    local InfoSection = MainTab:CreateSection("Hướng dẫn")
+
+    MainTab:CreateLabel("Bật toggle → Bot tự farm theo level")
+
+    MainTab:CreateParagraph({
         Title = "📖 Hướng dẫn",
         Content = "1. Bật Auto Farm\n2. Bot tự nhận quest theo level\n3. Bay đến bãi farm và đánh quái\n4. Quest xong → nhận quest mới\n5. Lên level → tự chuyển vùng"
     })

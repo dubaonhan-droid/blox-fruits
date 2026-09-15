@@ -5,6 +5,8 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
 local MobData = nil -- Sẽ được truyền vào từ app.lua qua SetMobData()
@@ -67,33 +69,40 @@ local function TweenToPosition(targetPosition)
     tween.Completed:Wait()
 end
 
+--- Tìm tất cả quái trong Workspace.Enemies để tránh gom nhầm NPC
+local function FindAllMobs(mobName)
+    local mobs = {}
+    local enemies = Workspace:FindFirstChild("Enemies")
+    if enemies then
+        for _, obj in ipairs(enemies:GetChildren()) do
+            if (obj.Name == mobName or string.find(obj.Name, mobName))
+                and obj:FindFirstChild("Humanoid") 
+                and obj.Humanoid.Health > 0 
+                and obj:FindFirstChild("HumanoidRootPart") then
+                table.insert(mobs, obj)
+            end
+        end
+    end
+    return mobs
+end
+
 --- Gom tất cả quái có tên `mobName` về trước mặt người chơi
 local function BringMobs(mobName)
-    local enemiesFolder = Workspace:FindFirstChild("Enemies")
     local character = LocalPlayer.Character
-    if not enemiesFolder or not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 
     local hrp = character.HumanoidRootPart
     local bringCFrame = hrp.CFrame * CFrame.new(0, -2, -ATTACK_RANGE)
 
-    for _, obj in ipairs(enemiesFolder:GetChildren()) do
-        if obj.Name == mobName 
-            and obj:FindFirstChild("Humanoid") 
-            and obj.Humanoid.Health > 0 
-            and obj:FindFirstChild("HumanoidRootPart") then
-            
-            obj.HumanoidRootPart.CFrame = bringCFrame
-            obj.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-            obj.HumanoidRootPart.CanCollide = false
-        end
+    for _, obj in ipairs(FindAllMobs(mobName)) do
+        obj.HumanoidRootPart.CFrame = bringCFrame
+        obj.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        obj.HumanoidRootPart.CanCollide = false
     end
 end
 
 --- Tìm con quái gần nhất có tên `mobName`, trả về object hoặc nil
 local function FindNearestMob(mobName)
-    local enemiesFolder = Workspace:FindFirstChild("Enemies")
-    if not enemiesFolder then return nil end
-
     local character = LocalPlayer.Character
     local hrp = character and character:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
@@ -101,17 +110,11 @@ local function FindNearestMob(mobName)
     local targetMob = nil
     local shortestDistance = math.huge
 
-    for _, obj in ipairs(enemiesFolder:GetChildren()) do
-        if obj.Name == mobName 
-            and obj:FindFirstChild("Humanoid") 
-            and obj.Humanoid.Health > 0 
-            and obj:FindFirstChild("HumanoidRootPart") then
-            
-            local distance = (hrp.Position - obj.HumanoidRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                targetMob = obj
-            end
+    for _, obj in ipairs(FindAllMobs(mobName)) do
+        local distance = (hrp.Position - obj.HumanoidRootPart.Position).Magnitude
+        if distance < shortestDistance then
+            shortestDistance = distance
+            targetMob = obj
         end
     end
 
@@ -122,11 +125,16 @@ end
 -- HÀM CHÍNH (PUBLIC) — TỪNG BƯỚC TUẦN TỰ
 -- ═══════════════════════════════════════════════
 
---- Lấy cấp độ hiện tại của người chơi
+--- Lấy cấp độ hiện tại của người chơi (code Blox Fruits thật)
 function AutoFarm.GetPlayerLevel()
-    -- TODO: Thay bằng code thật trong Roblox
-    -- return game:GetService("Players").LocalPlayer.Data.Level.Value
-    return 20 -- Giả lập đang ở cấp 20
+    local success, level = pcall(function()
+        return LocalPlayer:WaitForChild("Data", 5):WaitForChild("Level", 5).Value
+    end)
+    if success and level then
+        return level
+    end
+    warn("[AutoFarm] ⚠️ Không đọc được level, dùng mặc định = 1")
+    return 1
 end
 
 --- Tìm cấu hình quái phù hợp theo level từ mob_data.lua
@@ -139,41 +147,85 @@ function AutoFarm.GetMobDataByLevel(level)
     return nil
 end
 
---- Kiểm tra quest đã hoàn thành chưa
+--- Kiểm tra quest đã hoàn thành chưa (code Blox Fruits thật)
 function AutoFarm.IsQuestComplete()
-    -- TODO: Thay bằng code thật trong Roblox
-    -- Ví dụ: kiểm tra UI quest hoặc RemoteFunction
-    -- return game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("QuestComplete") ~= nil
-    
-    -- Giả lập: quest hoàn thành sau khi không còn quái nào sống
-    -- Trong thực tế cần kiểm tra quest progress từ server
-    return false
+    local success, result = pcall(function()
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if playerGui then
+            local mainGui = playerGui:FindFirstChild("Main")
+            if mainGui then
+                local questFrame = mainGui:FindFirstChild("Quest")
+                -- Nếu Quest frame tồn tại và đang hiển thị (Visible == true) -> Đang có quest
+                if questFrame and questFrame.Visible == true then
+                    return false -- Đang làm quest, chưa hoàn thành
+                end
+            end
+        end
+        return true -- Không thấy UI Quest = Đã hoàn thành hoặc chưa nhận
+    end)
+    return success and result or true
+end
+
+--- Tìm NPC đệ quy trong Workspace (vì NPC thường nằm trong folder con)
+local function FindNPC(npcName)
+    local function search(parent)
+        for _, obj in ipairs(parent:GetChildren()) do
+            if obj.Name == npcName and obj:FindFirstChild("HumanoidRootPart") then
+                return obj
+            elseif obj:IsA("Folder") or obj:IsA("Model") then
+                local found = search(obj)
+                if found then return found end
+            end
+        end
+        return nil
+    end
+    return search(Workspace)
 end
 
 --- BƯỚC 1: Di chuyển đến NPC và nhận quest
 function AutoFarm.GetQuest(mobData)
+    -- Tránh nhận lại quest nếu đang có quest
+    if not AutoFarm.IsQuestComplete() then
+        return
+    end
+
     print("[AutoFarm] Bước 1: Đi nhận quest từ " .. mobData.QuestGiverName .. "...")
 
-    -- Tìm NPC quest trong Workspace
-    local questGiver = Workspace:FindFirstChild(mobData.QuestGiverName)
+    -- Tìm NPC quest (tìm đệ quy trong toàn Workspace)
+    local questGiver = FindNPC(mobData.QuestGiverName)
     
-    if questGiver and questGiver:FindFirstChild("HumanoidRootPart") then
+    if questGiver then
         -- Bay đến NPC
         local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 5)
         TweenToPosition(npcPos)
-        FloatPlayer(false) -- Hạ xuống đất để nhận quest
-        task.wait(0.5)
+        FloatPlayer(false)
+        task.wait(1) -- Chờ chạm đất và load NPC
         
-        -- Gọi Remote để nhận quest
-        -- TODO: Thay bằng remote thật
-        -- game:GetService("ReplicatedStorage").CommF_:InvokeServer("StartQuest", mobData.QuestName, mobData.QuestLevel)
-        print("[AutoFarm] ✅ Đã nhận quest: " .. mobData.QuestName)
+        -- Gọi Remote nhận quest
+        pcall(function()
+            local args = {
+                [1] = "StartQuest",
+                [2] = mobData.QuestName,
+                [3] = mobData.QuestLevel
+            }
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+        end)
+        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest: " .. mobData.QuestName)
+        task.wait(1)
     elseif mobData.QuestNpcPosition then
-        -- Nếu NPC bị ẩn, dùng tọa độ cố định từ config
         TweenToPosition(mobData.QuestNpcPosition)
         FloatPlayer(false)
-        task.wait(0.5)
-        print("[AutoFarm] ✅ Đã nhận quest (dùng tọa độ cố định): " .. mobData.QuestName)
+        task.wait(1)
+        pcall(function()
+            local args = {
+                [1] = "StartQuest",
+                [2] = mobData.QuestName,
+                [3] = mobData.QuestLevel
+            }
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+        end)
+        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest (tọa độ cố định): " .. mobData.QuestName)
+        task.wait(1)
     else
         print("[AutoFarm] ⚠️ Không tìm thấy NPC: " .. mobData.QuestGiverName)
     end
@@ -209,50 +261,74 @@ function AutoFarm.FarmUntilQuestDone(mobData, UI)
     if not character or not character:FindFirstChild("Humanoid") then return end
     local humanoid = character.Humanoid
 
-    -- Equip vũ khí
-    local tool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-    if tool then humanoid:EquipTool(tool) end
+    FloatPlayer(true)
 
-    -- Vòng lặp farm — DỪNG khi quest hoàn thành hoặc người dùng tắt AutoFarm
     while not AutoFarm.IsQuestComplete() do
-        -- Kiểm tra nếu người dùng tắt Auto Farm
         if not UI.Settings.AutoFarm then
             print("[AutoFarm] ⏹️ Người dùng đã tắt Auto Farm.")
             FloatPlayer(false)
             return
         end
 
-        -- Tìm quái gần nhất
         local targetMob = FindNearestMob(mobData.MobName)
-
-        if targetMob then
-            -- Bay đến vị trí trên đầu quái
+        if targetMob and targetMob:FindFirstChild("HumanoidRootPart") then
             local mobPos = targetMob.HumanoidRootPart.Position
             local targetPos = mobPos + Vector3.new(0, FLOAT_HEIGHT, 0)
             TweenToPosition(targetPos)
-
-            -- Gom quái + tấn công cho đến khi con này chết
-            FloatPlayer(true)
-            local equippedTool = character:FindFirstChildOfClass("Tool")
             
             while targetMob 
                 and targetMob:FindFirstChild("Humanoid") 
                 and targetMob.Humanoid.Health > 0 
-                and UI.Settings.AutoFarm do
+                and UI.Settings.AutoFarm 
+                and not AutoFarm.IsQuestComplete() do
                 
+                -- Cập nhật vũ khí theo cài đặt (Melee, Sword, Blox Fruit)
+                local targetWeaponType = UI.Settings.WeaponType or "Melee"
+                local equippedTool = character:FindFirstChildOfClass("Tool")
+                
+                if not equippedTool or equippedTool.ToolTip ~= targetWeaponType then
+                    local toolToEquip = nil
+                    for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
+                        if item:IsA("Tool") and item.ToolTip == targetWeaponType then
+                            toolToEquip = item
+                            break
+                        end
+                    end
+                    if toolToEquip then
+                        humanoid:EquipTool(toolToEquip)
+                        equippedTool = toolToEquip
+                    end
+                end
+
                 BringMobs(mobData.MobName)
                 
                 if equippedTool then
-                    equippedTool:Activate()
+                    if UI.Settings.WeaponType == "Blox Fruit" then
+                        -- Tự động tung skill (Z, X, C, V, F)
+                        local keys = {Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V}
+                        for _, key in ipairs(keys) do
+                            VirtualInputManager:SendKeyEvent(true, key, false, game)
+                            VirtualInputManager:SendKeyEvent(false, key, false, game)
+                        end
+                    else
+                        -- Đánh thường (Melee / Sword)
+                        equippedTool:Activate()
+                        VirtualUser:CaptureController()
+                        VirtualUser:ClickButton1(Vector2.new(0, 0))
+                    end
                 end
-                task.wait(0.1)
+                
+                -- Xử lý tốc độ đánh
+                if UI.Settings.FastAttack then
+                    task.wait() -- Siêu nhanh (theo RunService)
+                else
+                    task.wait(0.2) -- Tốc độ bình thường
+                end
             end
         else
             -- Không có quái, đợi respawn
             task.wait(1)
         end
-
-        task.wait(0.1)
     end
 
     FloatPlayer(false)

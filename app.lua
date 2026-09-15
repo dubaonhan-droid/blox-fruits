@@ -4,11 +4,12 @@
 local BASE_URL = "https://raw.githubusercontent.com/dubaonhan-droid/blox-fruits/main/"
 
 -- ═══════════════════════════════════════
--- BƯỚC 0: Load tất cả module với error handling
+-- BƯỚC 0: Load tất cả module với error handling (Có thêm Cache Buster)
 -- ═══════════════════════════════════════
 local function SafeLoad(name, url)
+    local noCacheUrl = url .. "?v=" .. tostring(os.time())
     local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
+        return loadstring(game:HttpGet(noCacheUrl))()
     end)
     if success and result then
         print("[Loader] ✅ Đã load: " .. name)
