@@ -17,15 +17,8 @@ function BotApp.Init()
     -- Bước 1: Tải giao diện Menu
     UI.Load()
 
-    -- Bước 2: Khởi chạy AutoFarm (chờ lệnh từ UI)
+    -- Bước 2: Khởi chạy AutoFarm (chờ người dùng bấm toggle trên Menu)
     AutoFarm.Start(UI)
-
-    -- (Mô phỏng: sau 2 giây, người dùng bật Auto Farm trên giao diện)
-    task.spawn(function()
-        task.wait(2)
-        print("[App] Mô phỏng: Người dùng bật Auto Farm...")
-        UI.ToggleAutoFarm(true)
-    end)
 end
 
 -- Chạy bot
