@@ -213,9 +213,19 @@ function AutoFarm.GetQuest(mobData)
         print("[AutoFarm] ✅ Đã gửi lệnh nhận quest: " .. mobData.QuestName)
         task.wait(1)
     elseif mobData.QuestNpcPosition then
+        print("[AutoFarm] Đang bay tới tọa độ đảo để tìm NPC...")
         TweenToPosition(mobData.QuestNpcPosition)
         FloatPlayer(false)
         task.wait(1)
+        
+        -- Thử tìm lại NPC sau khi đảo đã load
+        questGiver = FindNPC(mobData.QuestGiverName)
+        if questGiver then
+            local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 5)
+            TweenToPosition(npcPos)
+            task.wait(0.5)
+        end
+        
         pcall(function()
             local args = {
                 [1] = "StartQuest",
@@ -224,7 +234,7 @@ function AutoFarm.GetQuest(mobData)
             }
             game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
         end)
-        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest (tọa độ cố định): " .. mobData.QuestName)
+        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest (từ tọa độ): " .. mobData.QuestName)
         task.wait(1)
     else
         print("[AutoFarm] ⚠️ Không tìm thấy NPC: " .. mobData.QuestGiverName)
