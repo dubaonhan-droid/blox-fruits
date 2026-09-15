@@ -147,7 +147,7 @@ function AutoFarm.GetMobDataByLevel(level)
     return nil
 end
 
---- Kiểm tra quest đã hoàn thành chưa (code Blox Fruits thật)
+--- Kiểm tra quest đã hoàn thành chưa (Siêu cấp chống mù UI)
 function AutoFarm.IsQuestComplete()
     local success, result = pcall(function()
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
@@ -155,13 +155,25 @@ function AutoFarm.IsQuestComplete()
             local mainGui = playerGui:FindFirstChild("Main")
             if mainGui then
                 local questFrame = mainGui:FindFirstChild("Quest")
-                -- Nếu Quest frame tồn tại và đang hiển thị (Visible == true) -> Đang có quest
-                if questFrame and questFrame.Visible == true then
-                    return false -- Đang làm quest, chưa hoàn thành
+                if questFrame then
+                    -- Cách 1: Check Visible truyền thống
+                    if questFrame.Visible == true then
+                        return false -- Đang có quest
+                    end
+                    
+                    -- Cách 2: Check Text bên trong (đề phòng game giấu UI kiểu khác)
+                    local container = questFrame:FindFirstChild("Container")
+                    if container then
+                        local title = container:FindFirstChild("QuestTitle")
+                        local title2 = container:FindFirstChild("Title")
+                        if (title and title.Text ~= "" and title.Text ~= " ") or (title2 and title2.Text ~= "" and title2.Text ~= " ") then
+                            return false -- Đang có quest (có chữ)
+                        end
+                    end
                 end
             end
         end
-        return true -- Không thấy UI Quest = Đã hoàn thành hoặc chưa nhận
+        return true -- Không có dấu hiệu nào của Quest = Đã hoàn thành hoặc chưa nhận
     end)
     return success and result or true
 end
@@ -296,12 +308,26 @@ function AutoFarm.FarmUntilQuestDone(mobData, UI)
                 
                 -- Cập nhật vũ khí theo cài đặt (Melee, Sword, Blox Fruit)
                 local targetWeaponType = UI.Settings.WeaponType or "Melee"
+                local targetLower = string.lower(targetWeaponType)
                 local equippedTool = character:FindFirstChildOfClass("Tool")
                 
-                if not equippedTool or equippedTool.ToolTip ~= targetWeaponType then
+                local function isCorrectTool(item)
+                    if not item:IsA("Tool") then return false end
+                    local tt = string.lower(item.ToolTip or "")
+                    local name = string.lower(item.Name or "")
+                    
+                    if string.find(tt, targetLower) then return true end
+                    -- Hỗ trợ tiếng Việt hoặc các tên đặc biệt
+                    if targetLower == "melee" and (string.find(tt, "võ") or string.find(tt, "cận chiến") or string.find(name, "combat") or string.find(name, "step") or string.find(name, "kung") or string.find(name, "claw") or string.find(name, "karate")) then return true end
+                    if targetLower == "sword" and (string.find(tt, "kiếm") or string.find(tt, "đao")) then return true end
+                    if targetLower == "blox fruit" and (string.find(tt, "trái") or string.find(tt, "ác quỷ") or string.find(tt, "fruit")) then return true end
+                    return false
+                end
+
+                if not equippedTool or not isCorrectTool(equippedTool) then
                     local toolToEquip = nil
                     for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
-                        if item:IsA("Tool") and item.ToolTip == targetWeaponType then
+                        if isCorrectTool(item) then
                             toolToEquip = item
                             break
                         end
