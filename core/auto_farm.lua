@@ -23,7 +23,7 @@ end
 -- ═══════════════════════════════════════════════
 -- CẤU HÌNH
 -- ═══════════════════════════════════════════════
-local TWEEN_SPEED = 300   -- Tốc độ bay (studs/giây)
+local TWEEN_SPEED = 150   -- Tốc độ bay an toàn (giảm từ 300 xuống 150 để không bị giật lùi do Anti-Cheat)
 local FLOAT_HEIGHT = 20   -- Độ cao lơ lửng trên quái
 local ATTACK_RANGE = 5    -- Khoảng cách gom quái trước mặt
 
@@ -152,50 +152,33 @@ function AutoFarm.GetMobDataByLevel(level)
     return nil
 end
 
---- Kiểm tra quest đã hoàn thành chưa (Brute-force tìm UI)
+--- Kiểm tra quest đã hoàn thành chưa (Quét toàn màn hình tìm số lượng quái)
 function AutoFarm.IsQuestComplete()
     local success, result = pcall(function()
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not playerGui then return true end
         
-        local mainGui = playerGui:FindFirstChild("Main")
-        if not mainGui then return true end
-        
-        -- Cách 1: Tìm theo tên chuẩn hoặc tên tiếng Việt
-        local questFrame = mainGui:FindFirstChild("Quest") or mainGui:FindFirstChild("Nhiệm Vụ")
-        
-        -- Cách 2: Nếu không thấy, quét toàn bộ con của Main để tìm Frame có chứa "Container"
-        if not questFrame then
-            for _, child in ipairs(mainGui:GetChildren()) do
-                if child:IsA("Frame") and child.Visible and child:FindFirstChild("Container") then
-                    questFrame = child
-                    break
+        -- Quét TẤT CẢ các thành phần chữ trên màn hình (Cực kỳ bá đạo)
+        -- Tìm xem có dòng chữ nào hiển thị tiến độ farm quái kiểu "0/8", "1/7" không
+        for _, screenGui in ipairs(playerGui:GetChildren()) do
+            if screenGui:IsA("ScreenGui") and screenGui.Enabled then
+                for _, obj in ipairs(screenGui:GetDescendants()) do
+                    if obj:IsA("TextLabel") and obj.Visible then
+                        -- Nếu tìm thấy định dạng "số/số" (ví dụ: 0/7, 5/8)
+                        if string.find(obj.Text, "%d+/%d+") then
+                            return false -- Chắc chắn đang có quest chưa xong!
+                        end
+                    end
                 end
             end
         end
         
-        -- Kiểm tra logic hiển thị
-        if questFrame then
-            if questFrame.Visible == true then
-                return false -- Đang có quest
-            end
-            
-            local container = questFrame:FindFirstChild("Container")
-            if container then
-                local title = container:FindFirstChild("QuestTitle") or container:FindFirstChild("Title")
-                if title and title:IsA("TextLabel") and title.Text ~= "" and title.Text ~= " " then
-                    return false -- Đang có quest (chỉ bị giấu UI đi)
-                end
-            end
-        end
-        
-        return true -- Không tìm thấy quest = Đã hoàn thành hoặc chưa nhận
+        return true -- Không tìm thấy số đếm quái = Đã xong hoặc chưa nhận
     end)
     
     if not success then
         print("[AutoFarm] ⚠️ Lỗi UI khi check Quest: " .. tostring(result))
-        -- Trả về false để bot đứng chờ ở bãi quái thay vì bay ngược lên NPC!
-        return false 
+        return false -- Nếu lỡ bị lỗi đọc UI thì đứng yên farm tiếp, cấm bay về NPC!
     end
     
     return result
