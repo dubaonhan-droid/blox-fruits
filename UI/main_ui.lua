@@ -1,20 +1,21 @@
 -- UI/main_ui.lua
+-- Quản lý trạng thái UI (bật/tắt Auto Farm, v.v.)
 local UI = {}
 
--- Lưu trữ trạng thái các tuỳ chọn của người chơi
+-- Lưu trữ trạng thái các tùy chọn của người chơi
 UI.Settings = {
     AutoFarm = false
 }
 
 function UI.Load()
-    print("Đang tải dữ liệu trạng thái cho UI...")
-    
-    -- Gọi module menu riêng biệt để vẽ giao diện
+    print("[UI] Đang tải giao diện...")
+
+    -- Gọi module menu để vẽ giao diện, truyền UI qua tham số (tránh circular require)
     local Menu = require("UI.menu")
-    Menu.Build()
+    Menu.Build(UI)
 end
 
--- Hàm này được gọi khi người dùng bấm vào nút bật/tắt Auto Farm trên màn hình
+-- Hàm bật/tắt Auto Farm — được gọi từ Menu hoặc app.lua
 function UI.ToggleAutoFarm(state)
     if state ~= nil then
         UI.Settings.AutoFarm = state

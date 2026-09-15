@@ -1,74 +1,25 @@
--- app.lua: Module chính kết nối toàn bộ bot
+-- app.lua: Điểm khởi chạy chính — kết nối UI và AutoFarm
 local UI = require("UI.main_ui")
-
-local StarterIsland = {
-    Bandit = require("island.starter_island.bandit"),
-    Trainee = require("island.starter_island.trainee")
-}
-
-local Jungle = {
-    Monkey = require("island.jungle.monkey"),
-    Gorilla = require("island.jungle.gorilla")
-}
-
--- Cấu hình Level -> Quái vật
-local LevelConfig = {
-    { min = 1,  max = 14,   farmModule = StarterIsland.Bandit, name = "Bandit" },
-    { min = 15, max = 29,   farmModule = Jungle.Monkey,        name = "Monkey" },
-    { min = 30, max = 9999, farmModule = Jungle.Gorilla,       name = "Gorilla" }
-}
+local AutoFarm = require("core.auto_farm")
 
 local BotApp = {}
 
--- Hàm giả lập lấy cấp độ của người chơi
--- Trong thực tế Roblox sẽ tương tự: return game:GetService("Players").LocalPlayer.Data.Level.Value
-function BotApp.GetPlayerLevel()
-    return 20 -- Giả lập đang ở cấp 20 (Sẽ farm Monkey)
-end
-
--- Hàm tự động phân tích level và trả về con quái cần đánh
-function BotApp.GetFarmModuleByLevel(level)
-    for _, config in ipairs(LevelConfig) do
-        if level >= config.min and level <= config.max then
-            return config.farmModule, config.name
-        end
-    end
-    return nil, nil
-end
-
--- Vòng lặp farm tự động chạy dưới nền
-function BotApp.AutoFarmLoop()
-    -- Sử dụng task.spawn (API chuẩn của Roblox) để không block luồng chính
-    task.spawn(function()
-        while true do
-            if UI.Settings.AutoFarm then
-                local currentLevel = BotApp.GetPlayerLevel()
-                local farmModule, targetName = BotApp.GetFarmModuleByLevel(currentLevel)
-                
-                if farmModule then
-                    print("[AutoFarm] Đang ở Level " .. currentLevel .. ". Tự động farm: " .. targetName)
-                    farmModule.Farm()
-                else
-                    print("[AutoFarm] Không tìm thấy bãi farm phù hợp cho cấp: " .. currentLevel)
-                end
-            end
-            
-            -- Nghỉ ngơi 1 giây trước khi lặp lại để game không bị crash do overload
-            task.wait(1)
-        end
-    end)
-end
-
 function BotApp.Init()
-    print("Khởi chạy Blox Fruits Auto Farm Bot...")
-    UI.Load()
-    
-    -- Khởi chạy vòng lặp nghe theo lệnh Auto Farm
-    BotApp.AutoFarmLoop()
+    print("═══════════════════════════════════════")
+    print("  Blox Fruits Auto Farm Bot")
+    print("  Khởi chạy hệ thống...")
+    print("═══════════════════════════════════════")
 
-    -- (Đoạn này chỉ là mô phỏng việc người dùng tích vô Menu Auto Farm sau 2 giây)
+    -- Bước 1: Tải giao diện Menu
+    UI.Load()
+
+    -- Bước 2: Khởi chạy AutoFarm (chờ lệnh từ UI)
+    AutoFarm.Start(UI)
+
+    -- (Mô phỏng: sau 2 giây, người dùng bật Auto Farm trên giao diện)
     task.spawn(function()
         task.wait(2)
+        print("[App] Mô phỏng: Người dùng bật Auto Farm...")
         UI.ToggleAutoFarm(true)
     end)
 end
