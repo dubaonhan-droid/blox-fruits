@@ -73,9 +73,14 @@ end
 local function FindAllMobs(mobName)
     local mobs = {}
     local enemies = Workspace:FindFirstChild("Enemies")
+    local mobNameLower = string.lower(mobName)
+    
     if enemies then
         for _, obj in ipairs(enemies:GetChildren()) do
-            if (obj.Name == mobName or string.find(obj.Name, mobName))
+            local objNameLower = string.lower(obj.Name)
+            -- Tìm theo tên tiếng Anh HOẶC tên tiếng Việt (phòng khi game dịch tên obj)
+            if (objNameLower == mobNameLower or string.find(objNameLower, mobNameLower) or 
+               (mobNameLower == "sky bandit" and string.find(objNameLower, "cướp thiên không")))
                 and obj:FindFirstChild("Humanoid") 
                 and obj.Humanoid.Health > 0 
                 and obj:FindFirstChild("HumanoidRootPart") then
@@ -147,35 +152,53 @@ function AutoFarm.GetMobDataByLevel(level)
     return nil
 end
 
---- Kiểm tra quest đã hoàn thành chưa (Siêu cấp chống mù UI)
+--- Kiểm tra quest đã hoàn thành chưa (Brute-force tìm UI)
 function AutoFarm.IsQuestComplete()
     local success, result = pcall(function()
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if playerGui then
-            local mainGui = playerGui:FindFirstChild("Main")
-            if mainGui then
-                local questFrame = mainGui:FindFirstChild("Quest")
-                if questFrame then
-                    -- Cách 1: Check Visible truyền thống
-                    if questFrame.Visible == true then
-                        return false -- Đang có quest
-                    end
-                    
-                    -- Cách 2: Check Text bên trong (đề phòng game giấu UI kiểu khác)
-                    local container = questFrame:FindFirstChild("Container")
-                    if container then
-                        local title = container:FindFirstChild("QuestTitle")
-                        local title2 = container:FindFirstChild("Title")
-                        if (title and title.Text ~= "" and title.Text ~= " ") or (title2 and title2.Text ~= "" and title2.Text ~= " ") then
-                            return false -- Đang có quest (có chữ)
-                        end
-                    end
+        if not playerGui then return true end
+        
+        local mainGui = playerGui:FindFirstChild("Main")
+        if not mainGui then return true end
+        
+        -- Cách 1: Tìm theo tên chuẩn hoặc tên tiếng Việt
+        local questFrame = mainGui:FindFirstChild("Quest") or mainGui:FindFirstChild("Nhiệm Vụ")
+        
+        -- Cách 2: Nếu không thấy, quét toàn bộ con của Main để tìm Frame có chứa "Container"
+        if not questFrame then
+            for _, child in ipairs(mainGui:GetChildren()) do
+                if child:IsA("Frame") and child.Visible and child:FindFirstChild("Container") then
+                    questFrame = child
+                    break
                 end
             end
         end
-        return true -- Không có dấu hiệu nào của Quest = Đã hoàn thành hoặc chưa nhận
+        
+        -- Kiểm tra logic hiển thị
+        if questFrame then
+            if questFrame.Visible == true then
+                return false -- Đang có quest
+            end
+            
+            local container = questFrame:FindFirstChild("Container")
+            if container then
+                local title = container:FindFirstChild("QuestTitle") or container:FindFirstChild("Title")
+                if title and title:IsA("TextLabel") and title.Text ~= "" and title.Text ~= " " then
+                    return false -- Đang có quest (chỉ bị giấu UI đi)
+                end
+            end
+        end
+        
+        return true -- Không tìm thấy quest = Đã hoàn thành hoặc chưa nhận
     end)
-    return success and result or true
+    
+    if not success then
+        print("[AutoFarm] ⚠️ Lỗi UI khi check Quest: " .. tostring(result))
+        -- Trả về false để bot đứng chờ ở bãi quái thay vì bay ngược lên NPC!
+        return false 
+    end
+    
+    return result
 end
 
 --- Tìm NPC đệ quy trong Workspace (tìm tên gần đúng)
