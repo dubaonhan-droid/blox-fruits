@@ -166,11 +166,12 @@ function AutoFarm.IsQuestComplete()
     return success and result or true
 end
 
---- Tìm NPC đệ quy trong Workspace (vì NPC thường nằm trong folder con)
+--- Tìm NPC đệ quy trong Workspace (tìm tên gần đúng)
 local function FindNPC(npcName)
+    local targetName = string.lower(npcName)
     local function search(parent)
         for _, obj in ipairs(parent:GetChildren()) do
-            if obj.Name == npcName and obj:FindFirstChild("HumanoidRootPart") then
+            if obj:FindFirstChild("HumanoidRootPart") and string.find(string.lower(obj.Name), targetName) then
                 return obj
             elseif obj:IsA("Folder") or obj:IsA("Model") then
                 local found = search(obj)
