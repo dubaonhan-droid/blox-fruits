@@ -276,6 +276,7 @@ function AutoFarm.FarmUntilQuestDone(mobData, UI)
             local targetPos = mobPos + Vector3.new(0, FLOAT_HEIGHT, 0)
             TweenToPosition(targetPos)
             
+            local lastBring = 0
             while targetMob 
                 and targetMob:FindFirstChild("Humanoid") 
                 and targetMob.Humanoid.Health > 0 
@@ -300,7 +301,11 @@ function AutoFarm.FarmUntilQuestDone(mobData, UI)
                     end
                 end
 
-                BringMobs(mobData.MobName)
+                -- Gom quái (chỉ chạy mỗi 0.5s để chống giật lag)
+                if os.clock() - lastBring > 0.5 then
+                    BringMobs(mobData.MobName)
+                    lastBring = os.clock()
+                end
                 
                 if equippedTool then
                     if UI.Settings.WeaponType == "Blox Fruit" then
