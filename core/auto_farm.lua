@@ -1,17 +1,22 @@
 -- core/auto_farm.lua
 -- Module farm tuần tự: Nhận Quest → Bay đến bãi → Farm → Quest xong → Kiểm tra level → Lặp lại
--- KHÔNG dùng task.spawn chồng chéo, chỉ có 1 vòng lặp duy nhất.
-
-local BASE_URL = "https://raw.githubusercontent.com/dubaonhan-droid/blox-fruits/main/"
+-- KHÔNG tự load file khác (app.lua lo hết), KHÔNG dùng task.spawn chồng chéo.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local MobData = loadstring(game:HttpGet(BASE_URL .. "config/mob_data.lua"))()
 local LocalPlayer = Players.LocalPlayer
+local MobData = nil -- Sẽ được truyền vào từ app.lua qua SetMobData()
 
 local AutoFarm = {}
+
+-- Nhận MobData từ app.lua
+function AutoFarm.SetMobData(data)
+    MobData = data
+    print("[AutoFarm] ✅ Đã nhận dữ liệu quái vật (" .. (data and #data or 0) .. " loại)")
+end
+
 
 -- ═══════════════════════════════════════════════
 -- CẤU HÌNH
