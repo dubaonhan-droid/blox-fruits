@@ -158,15 +158,19 @@ function AutoFarm.IsQuestComplete()
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not playerGui then return true end
         
-        -- Quét TẤT CẢ các thành phần chữ trên màn hình (Cực kỳ bá đạo)
-        -- Tìm xem có dòng chữ nào hiển thị tiến độ farm quái kiểu "0/8", "1/7" không
         for _, screenGui in ipairs(playerGui:GetChildren()) do
             if screenGui:IsA("ScreenGui") and screenGui.Enabled then
                 for _, obj in ipairs(screenGui:GetDescendants()) do
                     if obj:IsA("TextLabel") and obj.Visible then
-                        -- Nếu tìm thấy định dạng "số/số" (ví dụ: 0/7, 5/8)
-                        if string.find(obj.Text, "%d+/%d+") then
-                            return false -- Chắc chắn đang có quest chưa xong!
+                        -- Lấy ra 2 số từ chuỗi kiểu "0/8" hoặc "4/7"
+                        local current, max = string.match(obj.Text, "(%d+)/(%d+)")
+                        if current and max then
+                            local maxNum = tonumber(max)
+                            -- Phân biệt với thanh Máu (100/100) và Năng lượng (2470/2470)
+                            -- Nhiệm vụ farm quái trong Blox Fruits hiếm khi vượt quá 20 con
+                            if maxNum > 0 and maxNum <= 50 then
+                                return false -- Chắc chắn đang có quest chưa xong!
+                            end
                         end
                     end
                 end
@@ -178,7 +182,7 @@ function AutoFarm.IsQuestComplete()
     
     if not success then
         print("[AutoFarm] ⚠️ Lỗi UI khi check Quest: " .. tostring(result))
-        return false -- Nếu lỡ bị lỗi đọc UI thì đứng yên farm tiếp, cấm bay về NPC!
+        return false 
     end
     
     return result
@@ -338,9 +342,23 @@ function AutoFarm.FarmUntilQuestDone(mobData, UI)
                             break
                         end
                     end
+                    
                     if toolToEquip then
                         humanoid:EquipTool(toolToEquip)
                         equippedTool = toolToEquip
+                    end
+                    
+                    -- Bổ sung: Mô phỏng bấm phím số (Slot 1, 2, 3) cho các bản mobile executor hay lỗi EquipTool
+                    local keyToPress = nil
+                    if targetLower == "melee" then keyToPress = Enum.KeyCode.One
+                    elseif targetLower == "sword" then keyToPress = Enum.KeyCode.Two
+                    elseif targetLower == "blox fruit" then keyToPress = Enum.KeyCode.Three
+                    end
+                    
+                    if keyToPress then
+                        VirtualInputManager:SendKeyEvent(true, keyToPress, false, game)
+                        task.wait(0.1)
+                        VirtualInputManager:SendKeyEvent(false, keyToPress, false, game)
                     end
                 end
 
