@@ -13,8 +13,8 @@ local MobData = {
         QuestName = "BanditQuest1",
         QuestLevel = 1,
         QuestGiverName = "Bandit Quest Giver",
-        QuestNpcPosition = nil,
-        FarmPosition = nil,
+        QuestNpcPosition = Vector3.new(1060, 17, 1547),
+        FarmPosition = Vector3.new(1145, 17, 1616),
     },
     {
         MinLevel = 10,
@@ -37,8 +37,8 @@ local MobData = {
         QuestName = "JungleQuest",
         QuestLevel = 1,
         QuestGiverName = "Adventurer",
-        QuestNpcPosition = nil,
-        FarmPosition = nil,
+        QuestNpcPosition = Vector3.new(-1598, 37, 153),
+        FarmPosition = Vector3.new(-1445, 23, 105),
     },
     {
         MinLevel = 23,
@@ -47,8 +47,8 @@ local MobData = {
         QuestName = "JungleQuest",
         QuestLevel = 2,
         QuestGiverName = "Adventurer",
-        QuestNpcPosition = nil,
-        FarmPosition = nil,
+        QuestNpcPosition = Vector3.new(-1598, 37, 153),
+        FarmPosition = Vector3.new(-1147, 40, -500),
     },
 
     -- ═══════════════════════════════════════════════

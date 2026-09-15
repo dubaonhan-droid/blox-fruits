@@ -61,6 +61,27 @@ function Menu.Build(UI_State)
         end,
     })
 
+    local ToolSection = MainTab:CreateSection("Công cụ hỗ trợ (Fix lỗi khác đảo)")
+
+    MainTab:CreateButton({
+        Name = "In Tọa Độ Hiện Tại (Copy vào mob_data.lua)",
+        Callback = function()
+            local pos = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position
+            local posString = string.format("Vector3.new(%.1f, %.1f, %.1f)", pos.X, pos.Y, pos.Z)
+            print("==================================")
+            print("TỌA ĐỘ CỦA BẠN LÀ:")
+            print(posString)
+            print("Hãy copy dòng trên dán vào QuestNpcPosition hoặc FarmPosition")
+            print("==================================")
+            
+            -- Tự động copy vào clipboard nếu exploit hỗ trợ
+            if setclipboard then
+                setclipboard(posString)
+                print("Đã tự động copy vào Clipboard!")
+            end
+        end,
+    })
+
     local InfoSection = MainTab:CreateSection("Hướng dẫn")
 
     MainTab:CreateLabel("Bật toggle → Bot tự farm theo level")
