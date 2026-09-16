@@ -205,64 +205,132 @@ local function FindNPC(npcName)
 end
 
 --- BƯỚC 1: Di chuyển đến NPC và nhận quest
---- LUÔN thử nhận quest — Server sẽ tự bỏ qua nếu đang có quest rồi
+--- Thử NHIỀU cách nhận quest khác nhau + Debug log chi tiết
 function AutoFarm.GetQuest(mobData)
-    print("[AutoFarm] Bước 1: Đi nhận quest từ " .. mobData.QuestGiverName .. "...")
+    print("══════════════════════════════════════")
+    print("[AutoFarm] Bước 1: Đi nhận quest...")
+    print("[AutoFarm] QuestName = " .. tostring(mobData.QuestName))
+    print("[AutoFarm] QuestLevel = " .. tostring(mobData.QuestLevel))
+    print("[AutoFarm] NPC = " .. tostring(mobData.QuestGiverName))
+    print("══════════════════════════════════════")
 
-    -- Hàm gọi Remote nhận quest
+    -- Hàm gọi Remote nhận quest (có debug log)
     local function CallStartQuest()
-        pcall(function()
-            local args = {
-                [1] = "StartQuest",
-                [2] = mobData.QuestName,
-                [3] = mobData.QuestLevel
-            }
-            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+        local ok, response = pcall(function()
+            return game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", mobData.QuestName, mobData.QuestLevel)
         end)
+        print("[AutoFarm] CommF_ StartQuest → ok=" .. tostring(ok) .. " response=" .. tostring(response))
+        return ok, response
     end
 
-    -- Ưu tiên bay đến tọa độ NPC (chắc chắn đúng chỗ)
-    if mobData.QuestNpcPosition then
-        print("[AutoFarm] Đang bay tới tọa độ NPC...")
-        TweenToPosition(mobData.QuestNpcPosition)
-        FloatPlayer(false)
-        task.wait(1.5) -- Chờ đảo load
-        
-        -- Thử tìm NPC thật để bay sát hơn
-        local questGiver = FindNPC(mobData.QuestGiverName)
-        if questGiver and questGiver:FindFirstChild("HumanoidRootPart") then
-            local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 3)
-            TweenToPosition(npcPos)
-            task.wait(0.5)
-        end
-        
-        -- Gửi lệnh nhận quest
-        CallStartQuest()
-        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest: " .. mobData.QuestName)
-        task.wait(1)
-        
-        -- Thử lần 2 (phòng khi lần 1 chưa load kịp NPC)
-        if AutoFarm.IsQuestComplete() then
-            task.wait(1)
-            CallStartQuest()
-            print("[AutoFarm] 🔄 Thử nhận quest lần 2...")
-            task.wait(1)
-        end
-    else
-        -- Fallback: Tìm NPC trong Workspace
-        local questGiver = FindNPC(mobData.QuestGiverName)
-        if questGiver and questGiver:FindFirstChild("HumanoidRootPart") then
-            local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 3)
-            TweenToPosition(npcPos)
-            FloatPlayer(false)
-            task.wait(1)
-            CallStartQuest()
-            print("[AutoFarm] ✅ Đã gửi lệnh nhận quest: " .. mobData.QuestName)
-            task.wait(1)
+    -- Bay đến tọa độ NPC
+    local targetPos = mobData.QuestNpcPosition
+    if not targetPos then
+        -- Thử tìm NPC trong Workspace
+        local npc = FindNPC(mobData.QuestGiverName)
+        if npc and npc:FindFirstChild("HumanoidRootPart") then
+            targetPos = npc.HumanoidRootPart.Position
+            print("[AutoFarm] Tìm thấy NPC trong Workspace tại: " .. tostring(targetPos))
         else
-            print("[AutoFarm] ⚠️ Không tìm thấy NPC: " .. mobData.QuestGiverName)
+            print("[AutoFarm] ⚠️ Không có tọa độ NPC và không tìm thấy NPC!")
+            return
         end
     end
+
+    -- Bay đến NPC
+    print("[AutoFarm] Bay đến tọa độ: " .. tostring(targetPos))
+    TweenToPosition(targetPos)
+    FloatPlayer(false)
+    task.wait(2) -- Chờ đảo load lâu hơn
+
+    -- Tìm NPC thật để bay sát
+    local questGiver = FindNPC(mobData.QuestGiverName)
+    if questGiver and questGiver:FindFirstChild("HumanoidRootPart") then
+        print("[AutoFarm] ✅ Tìm thấy NPC: " .. questGiver.Name)
+        local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 3)
+        TweenToPosition(npcPos)
+        task.wait(0.5)
+    else
+        print("[AutoFarm] ⚠️ Không tìm thấy NPC bằng tên, quét tất cả NPC gần đó...")
+        -- Debug: In ra tất cả Model có Humanoid trong vùng 100 studs
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local myPos = character.HumanoidRootPart.Position
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj:FindFirstChild("Humanoid") then
+                    local dist = (myPos - obj.HumanoidRootPart.Position).Magnitude
+                    if dist < 100 and obj ~= character then
+                        print("[DEBUG] NPC gần: " .. obj.Name .. " (cách " .. math.floor(dist) .. " studs)")
+                    end
+                end
+            end
+        end
+    end
+
+    -- === THỬ CÁCH 1: CommF_ InvokeServer (Cách phổ biến nhất) ===
+    print("[AutoFarm] 🔄 Thử Cách 1: CommF_ InvokeServer...")
+    CallStartQuest()
+    task.wait(1)
+
+    -- Kiểm tra đã nhận chưa
+    if not AutoFarm.IsQuestComplete() then
+        print("[AutoFarm] ✅ Cách 1 THÀNH CÔNG! Đã nhận quest!")
+        return
+    end
+
+    -- === THỬ CÁCH 2: Thử với QuestLevel khác (0-indexed thay vì 1-indexed) ===
+    print("[AutoFarm] 🔄 Thử Cách 2: QuestLevel khác...")
+    for testLevel = 0, 3 do
+        if testLevel ~= mobData.QuestLevel then
+            pcall(function()
+                local resp = game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", mobData.QuestName, testLevel)
+                print("[AutoFarm] QuestLevel=" .. testLevel .. " → " .. tostring(resp))
+            end)
+            task.wait(0.5)
+            if not AutoFarm.IsQuestComplete() then
+                print("[AutoFarm] ✅ Cách 2 THÀNH CÔNG với QuestLevel=" .. testLevel)
+                return
+            end
+        end
+    end
+
+    -- === THỬ CÁCH 3: Thử tên quest khác phổ biến ===
+    print("[AutoFarm] 🔄 Thử Cách 3: Tên quest khác...")
+    local altQuestNames = {"SkyQuest", "SkySkyQuest", "SkyBanditQuest", "Sky1Quest", "SkyIslandQuest"}
+    for _, qName in ipairs(altQuestNames) do
+        if qName ~= mobData.QuestName then
+            for testLevel = 1, 2 do
+                pcall(function()
+                    local resp = game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", qName, testLevel)
+                    print("[AutoFarm] Quest=" .. qName .. " Level=" .. testLevel .. " → " .. tostring(resp))
+                end)
+                task.wait(0.3)
+                if not AutoFarm.IsQuestComplete() then
+                    print("[AutoFarm] ✅ Cách 3 THÀNH CÔNG! Quest=" .. qName .. " Level=" .. testLevel)
+                    return
+                end
+            end
+        end
+    end
+
+    -- === THỬ CÁCH 4: Tương tác trực tiếp với NPC (ClickDetector / ProximityPrompt) ===
+    print("[AutoFarm] 🔄 Thử Cách 4: Click trực tiếp NPC...")
+    if questGiver then
+        for _, desc in ipairs(questGiver:GetDescendants()) do
+            if desc:IsA("ClickDetector") then
+                print("[AutoFarm] Tìm thấy ClickDetector!")
+                pcall(function() fireclickdetector(desc) end)
+                task.wait(1)
+            elseif desc:IsA("ProximityPrompt") then
+                print("[AutoFarm] Tìm thấy ProximityPrompt!")
+                pcall(function() fireproximityprompt(desc) end)
+                task.wait(1)
+            end
+        end
+    end
+
+    print("[AutoFarm] ❌ TẤT CẢ các cách đều thất bại! Kiểm tra Output log để debug.")
+    print("══════════════════════════════════════")
 end
 
 --- BƯỚC 2: Bay đến bãi farm
