@@ -157,7 +157,7 @@ local MobData = {
         QuestName = "SkyQuest",
         QuestLevel = 1,
         QuestGiverName = "Sky Adventurer",
-        QuestNpcPosition = Vector3.new(-4840.9, 927.4, -922.5),
+        QuestNpcPosition = Vector3.new(-4818.2, 927.4, -922.1),
         FarmPosition = Vector3.new(-4973.7, 298.1, -1119.4),
     },
     {
@@ -167,7 +167,7 @@ local MobData = {
         QuestName = "SkyQuest",
         QuestLevel = 2,
         QuestGiverName = "Sky Adventurer",
-        QuestNpcPosition = Vector3.new(-4840.9, 927.4, -922.5),
+        QuestNpcPosition = Vector3.new(-4818.2, 927.4, -922.1),
         FarmPosition = Vector3.new(-4973.7, 298.1, -1119.4),
     },
 
