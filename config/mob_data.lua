@@ -196,8 +196,84 @@ local MobData = {
     },
 
     -- ═══════════════════════════════════════════════
-    -- THÊM MAP MỚI Ở ĐÂY (Colosseum 225+, Magma 300+, ...)
+    -- 🏛️ COLOSSEUM (Level 225–299)
     -- ═══════════════════════════════════════════════
+    {
+        MinLevel = 225,
+        MaxLevel = 274,
+        MobName = "Toga Warrior",
+        QuestName = "ColosseumQuest",
+        QuestLevel = 1,
+        QuestGiverName = "Colosseum Quest Giver",
+        QuestNpcPosition = nil,
+        FarmPosition = nil,
+    },
+    {
+        MinLevel = 275,
+        MaxLevel = 299,
+        MobName = "Gladiator",
+        QuestName = "ColosseumQuest",
+        QuestLevel = 2,
+        QuestGiverName = "Colosseum Quest Giver",
+        QuestNpcPosition = nil,
+        FarmPosition = nil,
+    },
+
+    -- ═══════════════════════════════════════════════
+    -- 🌋 MAGMA VILLAGE (Level 300–374)
+    -- ═══════════════════════════════════════════════
+    {
+        MinLevel = 300,
+        MaxLevel = 329,
+        MobName = "Military Soldier",
+        QuestName = "MagmaQuest",
+        QuestLevel = 1,
+        QuestGiverName = "Magma Quest Giver",
+        QuestNpcPosition = nil,
+        FarmPosition = nil,
+    },
+    
+    -- ═══════════════════════════════════════════════
+    -- 🌊 UNDERWATER CITY (Level 375–449)
+    -- ═══════════════════════════════════════════════
+    {
+        MinLevel = 375,
+        MaxLevel = 399,
+        MobName = "Fishman Warrior",
+        QuestName = "FishmanQuest",
+        QuestLevel = 1,
+        QuestGiverName = "Fishman Quest Giver",
+        QuestNpcPosition = nil,
+        FarmPosition = nil,
+    },
+
+    -- ═══════════════════════════════════════════════
+    -- ☁️ UPPER SKYLANDS (Level 450–624)
+    -- ═══════════════════════════════════════════════
+    {
+        MinLevel = 450,
+        MaxLevel = 474,
+        MobName = "God's Guard",
+        QuestName = "SkyExp1Quest",
+        QuestLevel = 1,
+        QuestGiverName = "Wysper",
+        QuestNpcPosition = nil,
+        FarmPosition = nil,
+    },
+
+    -- ═══════════════════════════════════════════════
+    -- ⛲ FOUNTAIN CITY (Level 625–699)
+    -- ═══════════════════════════════════════════════
+    {
+        MinLevel = 625,
+        MaxLevel = 649,
+        MobName = "Galley Pirate",
+        QuestName = "FountainQuest",
+        QuestLevel = 1,
+        QuestGiverName = "Fountain Quest Giver",
+        QuestNpcPosition = nil,
+        FarmPosition = nil,
+    }
 }
 
 return MobData
