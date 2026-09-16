@@ -152,37 +152,36 @@ function AutoFarm.GetMobDataByLevel(level)
     return nil
 end
 
---- Kiểm tra quest đã hoàn thành chưa (Quét toàn màn hình tìm số lượng quái)
+--- Kiểm tra quest đã hoàn thành chưa (Chỉ tìm trong Main GUI)
 function AutoFarm.IsQuestComplete()
     local success, result = pcall(function()
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not playerGui then return true end
         
-        for _, screenGui in ipairs(playerGui:GetChildren()) do
-            if screenGui:IsA("ScreenGui") and screenGui.Enabled then
-                for _, obj in ipairs(screenGui:GetDescendants()) do
-                    if obj:IsA("TextLabel") and obj.Visible then
-                        -- Lấy ra 2 số từ chuỗi kiểu "0/8" hoặc "4/7"
-                        local current, max = string.match(obj.Text, "(%d+)/(%d+)")
-                        if current and max then
-                            local maxNum = tonumber(max)
-                            -- Phân biệt với thanh Máu (100/100) và Năng lượng (2470/2470)
-                            -- Nhiệm vụ farm quái trong Blox Fruits hiếm khi vượt quá 20 con
-                            if maxNum > 0 and maxNum <= 50 then
-                                return false -- Chắc chắn đang có quest chưa xong!
-                            end
-                        end
+        local mainGui = playerGui:FindFirstChild("Main")
+        if not mainGui then return true end
+        
+        -- Chỉ quét bên trong Main GUI (nơi chứa quest tracker)
+        for _, obj in ipairs(mainGui:GetDescendants()) do
+            if obj:IsA("TextLabel") and obj.Visible then
+                local current, max = string.match(obj.Text, "(%d+)/(%d+)")
+                if current and max then
+                    local currentNum = tonumber(current)
+                    local maxNum = tonumber(max)
+                    -- Quest tracker: maxNum nhỏ (≤50) VÀ chưa hoàn thành (current < max)
+                    if maxNum > 0 and maxNum <= 50 and currentNum < maxNum then
+                        return false -- Quest đang hoạt động và CHƯA xong
                     end
                 end
             end
         end
         
-        return true -- Không tìm thấy số đếm quái = Đã xong hoặc chưa nhận
+        return true -- Không có quest hoạt động
     end)
     
     if not success then
         print("[AutoFarm] ⚠️ Lỗi UI khi check Quest: " .. tostring(result))
-        return false 
+        return true -- Nếu lỗi thì cho nhận quest mới luôn
     end
     
     return result
@@ -206,25 +205,12 @@ local function FindNPC(npcName)
 end
 
 --- BƯỚC 1: Di chuyển đến NPC và nhận quest
+--- LUÔN thử nhận quest — Server sẽ tự bỏ qua nếu đang có quest rồi
 function AutoFarm.GetQuest(mobData)
-    -- Tránh nhận lại quest nếu đang có quest
-    if not AutoFarm.IsQuestComplete() then
-        return
-    end
-
     print("[AutoFarm] Bước 1: Đi nhận quest từ " .. mobData.QuestGiverName .. "...")
 
-    -- Tìm NPC quest (tìm đệ quy trong toàn Workspace)
-    local questGiver = FindNPC(mobData.QuestGiverName)
-    
-    if questGiver then
-        -- Bay đến NPC
-        local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 5)
-        TweenToPosition(npcPos)
-        FloatPlayer(false)
-        task.wait(1) -- Chờ chạm đất và load NPC
-        
-        -- Gọi Remote nhận quest
+    -- Hàm gọi Remote nhận quest
+    local function CallStartQuest()
         pcall(function()
             local args = {
                 [1] = "StartQuest",
@@ -233,34 +219,49 @@ function AutoFarm.GetQuest(mobData)
             }
             game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
         end)
-        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest: " .. mobData.QuestName)
-        task.wait(1)
-    elseif mobData.QuestNpcPosition then
-        print("[AutoFarm] Đang bay tới tọa độ đảo để tìm NPC...")
+    end
+
+    -- Ưu tiên bay đến tọa độ NPC (chắc chắn đúng chỗ)
+    if mobData.QuestNpcPosition then
+        print("[AutoFarm] Đang bay tới tọa độ NPC...")
         TweenToPosition(mobData.QuestNpcPosition)
         FloatPlayer(false)
-        task.wait(1)
+        task.wait(1.5) -- Chờ đảo load
         
-        -- Thử tìm lại NPC sau khi đảo đã load
-        questGiver = FindNPC(mobData.QuestGiverName)
-        if questGiver then
-            local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 5)
+        -- Thử tìm NPC thật để bay sát hơn
+        local questGiver = FindNPC(mobData.QuestGiverName)
+        if questGiver and questGiver:FindFirstChild("HumanoidRootPart") then
+            local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 3)
             TweenToPosition(npcPos)
             task.wait(0.5)
         end
         
-        pcall(function()
-            local args = {
-                [1] = "StartQuest",
-                [2] = mobData.QuestName,
-                [3] = mobData.QuestLevel
-            }
-            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
-        end)
-        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest (từ tọa độ): " .. mobData.QuestName)
+        -- Gửi lệnh nhận quest
+        CallStartQuest()
+        print("[AutoFarm] ✅ Đã gửi lệnh nhận quest: " .. mobData.QuestName)
         task.wait(1)
+        
+        -- Thử lần 2 (phòng khi lần 1 chưa load kịp NPC)
+        if AutoFarm.IsQuestComplete() then
+            task.wait(1)
+            CallStartQuest()
+            print("[AutoFarm] 🔄 Thử nhận quest lần 2...")
+            task.wait(1)
+        end
     else
-        print("[AutoFarm] ⚠️ Không tìm thấy NPC: " .. mobData.QuestGiverName)
+        -- Fallback: Tìm NPC trong Workspace
+        local questGiver = FindNPC(mobData.QuestGiverName)
+        if questGiver and questGiver:FindFirstChild("HumanoidRootPart") then
+            local npcPos = questGiver.HumanoidRootPart.Position + Vector3.new(0, 0, 3)
+            TweenToPosition(npcPos)
+            FloatPlayer(false)
+            task.wait(1)
+            CallStartQuest()
+            print("[AutoFarm] ✅ Đã gửi lệnh nhận quest: " .. mobData.QuestName)
+            task.wait(1)
+        else
+            print("[AutoFarm] ⚠️ Không tìm thấy NPC: " .. mobData.QuestGiverName)
+        end
     end
 end
 
@@ -407,9 +408,13 @@ end
 
 --- Chạy 1 chu kỳ farm tuần tự (nhận quest → farm → quest xong)
 function AutoFarm.RunCycle(mobData, UI)
-    -- Bước 1: Nhận quest
-    AutoFarm.GetQuest(mobData)
-    task.wait(0.5)
+    -- Bước 1: Nhận quest (chỉ bay về NPC nếu chưa có quest)
+    if AutoFarm.IsQuestComplete() then
+        AutoFarm.GetQuest(mobData)
+        task.wait(0.5)
+    else
+        print("[AutoFarm] Đang có quest, bỏ qua bước nhận quest...")
+    end
 
     -- Bước 2: Bay đến bãi farm
     AutoFarm.GoToFarmArea(mobData)

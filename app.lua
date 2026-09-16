@@ -30,7 +30,9 @@ local Menu     = SafeLoad("Menu",     BASE_URL .. "UI/menu.lua")
 -- ═══════════════════════════════════════
 local UI = {}
 UI.Settings = {
-    AutoFarm = false
+    AutoFarm = false,
+    WeaponType = "Melee",      -- Mặc định dùng Melee
+    FastAttack = false          -- Mặc định đánh tốc độ thường
 }
 
 function UI.ToggleAutoFarm(state)
@@ -40,6 +42,20 @@ function UI.ToggleAutoFarm(state)
         UI.Settings.AutoFarm = not UI.Settings.AutoFarm
     end
     print("[UI] Auto Farm: " .. (UI.Settings.AutoFarm and "BẬT" or "TẮT"))
+end
+
+function UI.SetWeaponType(weaponType)
+    UI.Settings.WeaponType = weaponType or "Melee"
+    print("[UI] Vũ khí: " .. UI.Settings.WeaponType)
+end
+
+function UI.ToggleFastAttack(state)
+    if state ~= nil then
+        UI.Settings.FastAttack = state
+    else
+        UI.Settings.FastAttack = not UI.Settings.FastAttack
+    end
+    print("[UI] Fast Attack: " .. (UI.Settings.FastAttack and "BẬT" or "TẮT"))
 end
 
 -- ═══════════════════════════════════════
